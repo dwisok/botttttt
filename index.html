@@ -392,7 +392,7 @@ footer{position:relative;z-index:1;border-top:1px solid var(--line);padding:52px
 <section id="hero">
   <canvas id="heroShader" aria-hidden="true"></canvas>
   <a id="top"></a>
-  <div class="status-chip glass rv on"><i></i> unit 042 — on patrol · 02:47 am</div>
+  <div class="status-chip glass rv on"><i></i> unit 042 — on patrol · <span id="patrolClock">02:47 am</span></div>
   <h1 class="rv on d1">Machines that <em>keep watch.</em></h1>
   <p class="hero-sub rv on d2">Autonomous patrol robots for parking lots and industrial sites.
   Real service, real revenue — every minute of work verified on-chain.</p>
@@ -1093,7 +1093,7 @@ if(mail)mail.addEventListener('submit',e=>{
     var rows=scr.querySelector('#klogrows'),inc=rows.querySelector('.klog-row.inc'),clk=scr.querySelector('[data-clock]');
     var EV=['patrol_start','waypoint_reached','heartbeat','dock_charge','waypoint_reached','patrol_end','heartbeat'];
     var ZN=['zone a','zone b','zone c','dock','fence line','perimeter','ramp p2'];
-    var MAX=7,sec=2*3600+47*60+52;
+    var MAX=7,_n=new Date(),sec=_n.getHours()*3600+_n.getMinutes()*60+_n.getSeconds();
     function tstr(s){s=((s%86400)+86400)%86400;return pad(s/3600|0)+':'+pad((s/60|0)%60)+':'+pad(s%60);}
     function addRow(time,anim){var r=document.createElement('div');r.className='klog-row new';var hash=h48();r.innerHTML='<span class="tm">'+time+'</span><span class="ev">'+EV[(Math.random()*EV.length)|0]+'</span><span class="zn">'+ZN[(Math.random()*ZN.length)|0]+'</span><span class="cf">0.'+(90+((Math.random()*9)|0))+'</span><span class="hs">'+(anim?'0x…':hash)+'</span><span class="stt">anchored ✓</span>';rows.insertBefore(r,inc.nextSibling);while(rows.children.length>MAX+1)rows.removeChild(rows.lastElementChild);if(anim){var cell=r.querySelector('.hs'),i=0;var t=setInterval(function(){i++;if(i>=8){clearInterval(t);cell.textContent=hash;return;}cell.textContent=h48();},55);}}
     var seed=sec-40;for(var k=0;k<5;k++){addRow(tstr(seed));seed-=(18+((Math.random()*22)|0));}
@@ -1115,6 +1115,9 @@ if(mail)mail.addEventListener('submit',e=>{
     var blkT=0,batchT=0;
     vis(scr,function(){if(reduce)return;if(!blkT)blkT=setInterval(function(){block+=1+((Math.random()*3)|0);if(blockEl)blockEl.textContent=commas(block);if(epoch<99){epoch+=0.1;if(barEl)barEl.style.width=epoch.toFixed(1)+'%';if(pctEl)pctEl.textContent=Math.round(epoch)+'%';}},4000);if(!batchT)batchT=setInterval(function(){batchNo++;winEnd+=10;var r=addBatch(batchNo,hm(winEnd-10),hm(winEnd),true);setTimeout(function(){var st=r.querySelector('.kb-st');if(st){st.className='kb-st ok';st.textContent='confirmed ✓';}},2000);},12000);},function(){if(blkT){clearInterval(blkT);blkT=0;}if(batchT){clearInterval(batchT);batchT=0;}});
   })();
+
+  /* header status chip — live local time (hh:mm am/pm) */
+  (function(){var el=document.getElementById('patrolClock');if(!el)return;function upd(){var d=new Date(),h=d.getHours(),ap=h<12?'am':'pm',h12=h%12||12;el.textContent=(h12<10?'0':'')+h12+':'+(d.getMinutes()<10?'0':'')+d.getMinutes()+' '+ap;}upd();setInterval(upd,1000);})();
 })();
 </script>
 </body>

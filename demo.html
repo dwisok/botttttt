@@ -247,7 +247,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14p
   var block=8412930, nonce=1841, loop=413, wpi=0;
   var batt=92.4, speed=0, heading=92, temp=41.2, sats=7, rssi=63, up=0, inc=0, anc=0;
   var cpu=31, lidar=12400, audio=42, cov=0, peers=6, store=78; // extra telemetry
-  var SEC=2*3600+47*60, MS=0;
+  var _t0=new Date(), SEC=_t0.getHours()*3600+_t0.getMinutes()*60+_t0.getSeconds(), MS=0;
 
   var WP=[
     {x:150,y:258,l:'main gate'},{x:45,y:258,l:'sw drive'},{x:45,y:58,l:'nw fence'},
@@ -543,7 +543,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14p
       store=Math.max(58,Math.min(96,store+(Math.random()<0.5?-1:0)));
     }
     else if(!booted){SEC++;}
-    document.getElementById('tClock').textContent=clockStr();
+    (function(){var _n=new Date();document.getElementById('tClock').textContent=two(_n.getHours())+':'+two(_n.getMinutes())+':'+two(_n.getSeconds());})();
     tel();
   },1000);
 
