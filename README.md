@@ -1,60 +1,33 @@
 # keeper — front
 
-Front-end only. **No backend** (no services, smart contracts, docker, and no pnpm
-monorepo) and **no demo page**. Because there is no `pnpm-lock.yaml` /
-`packageManager: pnpm` at the repo root, a host never runs `pnpm install` through
-corepack — so the deploy can't hit the
-`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING` crash. Everything here installs with plain
-**npm**, and the landing pages need no install at all.
+Front-end only. **No backend, no build, no install.** Just static HTML — the keeper
+landing page plus a live demo. A host never runs any package manager here, so the
+deploy can't hit the `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING` corepack crash.
 
 ## Contents
 
-| Path                  | What it is                                    | Runtime |
-|-----------------------|-----------------------------------------------|---------|
-| `index.html`          | The **keeper** landing page (homepage, `/`)   | static  |
-| `sentinel.html`       | The **Sentinel** landing page (`/sentinel`)   | static  |
-| `k1-photo.png`, `s1-hero.png` | images used by the landings           | static  |
-| `.htaccess`           | serves `index.html` at `/`                    | static  |
-| `web/`                | **Sentinel AI** app — React + Vite + Tailwind | npm     |
-| `asme/`               | **Asme** app — React + Vite + Tailwind        | npm     |
+| Path           | What it is                                  | Runtime |
+|----------------|---------------------------------------------|---------|
+| `index.html`   | The **keeper** landing page (homepage, `/`) | static  |
+| `demo.html`    | The keeper ops console — **live demo** (`/demo`) | static |
+| `k1-photo.png` | image used by the landing                   | static  |
+| `.htaccess`    | serves `index.html` at `/`                  | static  |
 
 ## Run locally
 
-Landing pages (no build needed) — open `index.html` directly, or serve the
-folder with any static server:
+No build needed — open `index.html` directly, or serve the folder with any static
+server:
 
 ```bash
-npx --yes serve .        # then open http://localhost:3000
+npx --yes serve .        # then open http://localhost:3000  (landing)
+                         #      and  http://localhost:3000/demo
 ```
 
-React apps:
+## Deploy (Hostinger — static)
 
-```bash
-cd web   && npm install && npm run dev     # http://localhost:5173
-cd asme  && npm install && npm run dev
-```
+The whole site is static, so deploy is a plain file copy — no install/build step:
 
-## Build the React apps (for deploy)
-
-```bash
-cd web  && npm install && npm run build    # -> web/dist
-cd asme && npm install && npm run build    # -> asme/dist
-```
-
-## Deploy (Hostinger — static, corepack-proof)
-
-The homepage is static, so the simplest reliable deploy is **static hosting**
-(`public_html`), which has **no install step**:
-
-1. Upload `index.html`, `sentinel.html`, `k1-photo.png`, `s1-hero.png`,
-   and `.htaccess` into `public_html`.
-2. Open `https://<your-domain>/` (keeper landing).
-
-To also ship the React apps, `npm run build` each and upload its `dist/` into a
-subfolder (set Vite `base` to that subpath first, e.g. `base: '/app/'`).
-
-## Known gaps
-
-- `sentinel.html` (Sentinel landing) references **`s1-hero.mp4`** and **`s1-photo.png`**,
-  which are **not** in this repo — add them to the root or those elements will 404.
-  The keeper landing (`index.html`) has no missing assets.
+1. Upload `index.html`, `demo.html`, `k1-photo.png`, and `.htaccess` into the web
+   root (`public_html`). **Remove any leftover files from previous deploys** so an
+   old `index.html`/`assets/` can't take priority.
+2. Open `https://<your-domain>/` (keeper landing) and `https://<your-domain>/demo`.
