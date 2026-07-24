@@ -11,16 +11,16 @@ corepack — so the deploy can't hit the
 
 | Path                  | What it is                                    | Runtime |
 |-----------------------|-----------------------------------------------|---------|
-| `keeper-landing.html` | The **keeper** landing page (homepage, `/`)   | static  |
-| `index.html`          | The **Sentinel** landing page (`/index.html`) | static  |
+| `index.html`          | The **keeper** landing page (homepage, `/`)   | static  |
+| `sentinel.html`       | The **Sentinel** landing page (`/sentinel`)   | static  |
 | `k1-photo.png`, `s1-hero.png` | images used by the landings           | static  |
-| `.htaccess`           | maps `/` → `keeper-landing.html`              | static  |
+| `.htaccess`           | serves `index.html` at `/`                    | static  |
 | `web/`                | **Sentinel AI** app — React + Vite + Tailwind | npm     |
 | `asme/`               | **Asme** app — React + Vite + Tailwind        | npm     |
 
 ## Run locally
 
-Landing pages (no build needed) — open `keeper-landing.html` directly, or serve the
+Landing pages (no build needed) — open `index.html` directly, or serve the
 folder with any static server:
 
 ```bash
@@ -46,7 +46,7 @@ cd asme && npm install && npm run build    # -> asme/dist
 The homepage is static, so the simplest reliable deploy is **static hosting**
 (`public_html`), which has **no install step**:
 
-1. Upload `keeper-landing.html`, `index.html`, `k1-photo.png`, `s1-hero.png`,
+1. Upload `index.html`, `sentinel.html`, `k1-photo.png`, `s1-hero.png`,
    and `.htaccess` into `public_html`.
 2. Open `https://<your-domain>/` (keeper landing).
 
@@ -55,6 +55,6 @@ subfolder (set Vite `base` to that subpath first, e.g. `base: '/app/'`).
 
 ## Known gaps
 
-- `index.html` (Sentinel landing) references **`s1-hero.mp4`** and **`s1-photo.png`**,
+- `sentinel.html` (Sentinel landing) references **`s1-hero.mp4`** and **`s1-photo.png`**,
   which are **not** in this repo — add them to the root or those elements will 404.
-  The keeper landing (`keeper-landing.html`) has no missing assets.
+  The keeper landing (`index.html`) has no missing assets.

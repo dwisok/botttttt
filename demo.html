@@ -1,0 +1,555 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>keeper ops console — unit k-1 042 · live demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b0a;--panel:#131311;--panel2:#181815;--edge:#201f1b;
+  --line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.12);
+  --txt:#e9e7e0;--mut:#8f8d83;--faint:#59584f;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --sans:"Inter Tight",system-ui,sans-serif;
+  --amber:#e0a63c;--brown:#c79063;--ok:#63c295;--red:#e5654b;--blue:#7bb0cc;--mag:#c88fb8;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;
+  background-image:radial-gradient(1200px 700px at 80% -10%,rgba(199,144,99,.06),transparent 60%);overflow:hidden}
+.brand{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:600;letter-spacing:-.01em}
+.brand svg{color:var(--amber)}
+.mono{font-family:var(--mono)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+@keyframes bl{0%,60%{opacity:1}61%,100%{opacity:.15}}
+@keyframes pz{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.6);opacity:0}}
+@keyframes flash{0%,100%{opacity:.14}50%{opacity:.4}}
+
+/* ---- shell ---- */
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+.top{display:flex;align-items:center;gap:18px;padding:11px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+.top .sp{flex:1}
+.top .meta{font-family:var(--mono);font-size:11.5px;color:var(--mut);display:flex;gap:16px;align-items:center}
+.top .meta b{color:var(--txt);font-weight:500}
+.pill{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line2);display:inline-flex;align-items:center;gap:7px;color:var(--mut)}
+.pill.patrol{color:var(--ok);border-color:rgba(99,194,149,.35)}
+.pill.patrol .dot{background:var(--ok)}
+.pill.idle .dot{background:var(--faint)}
+.pill.boot{color:var(--blue);border-color:rgba(123,176,204,.35)}
+.pill.boot .dot{background:var(--blue);animation:bl 1s infinite}
+.pill.alert{color:var(--red);border-color:rgba(229,101,75,.45);animation:flash 1.1s infinite}
+.pill.alert .dot{background:var(--red)}
+
+.main{display:grid;grid-template-columns:1.6fr .9fr;gap:12px;padding:12px;min-height:0}
+.col{display:flex;flex-direction:column;gap:12px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.card .hd{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--mut)}
+.card .hd .r{margin-left:auto;color:var(--faint)}
+
+/* ---- terminal ---- */
+.term-card{min-height:0}
+.term{flex:1;overflow-y:auto;padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.55;min-height:0;
+  scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.term::-webkit-scrollbar{width:8px}.term::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px}
+.ln{white-space:pre-wrap;word-break:break-word;padding:.5px 0}
+.ln .lt{color:var(--faint)}
+.ln b{font-weight:600}
+.l-sys{color:var(--mut)}
+.l-boot,.l-sec,.l-net,.l-gps,.l-map,.l-hw{color:var(--blue)}
+.l-ok{color:var(--ok)}
+.l-move{color:var(--txt)}
+.l-tx{color:var(--brown)}
+.l-beat,.l-env,.l-track{color:var(--mut)}
+.l-warn,.l-ops{color:var(--amber)}
+.l-crit{color:var(--red)}
+.l-alert{color:var(--red);font-weight:600;background:rgba(229,101,75,.08);display:block;margin:1px -14px;padding:2px 14px}
+.l-cmd{color:var(--txt)}
+.pr{color:var(--ok)}.pc{color:var(--faint)}
+.cli{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12.5px;background:var(--panel2)}
+.cli .p{color:var(--ok)}.cli .p2{color:var(--faint)}
+.cli input{flex:1;background:none;border:0;outline:0;color:var(--txt);font-family:var(--mono);font-size:12.5px;caret-color:var(--amber)}
+.cli input::placeholder{color:var(--faint)}
+
+/* ---- telemetry ---- */
+.tel{padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:12px 18px}
+.tel .k{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.tel .v{font-family:var(--mono);font-size:19px;font-weight:500;color:var(--txt);line-height:1}
+.tel .v small{font-size:11px;color:var(--mut);font-weight:400}
+.tel .v.red{color:var(--red)}
+.bar{height:5px;border-radius:3px;background:var(--edge);margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .6s,background .3s}
+.bar i.low{background:var(--amber)}.bar i.crit{background:var(--red)}
+.wide{grid-column:1/-1}
+
+/* ---- map ---- */
+.map-card{flex:1.5 1 0;min-height:250px}
+.map-wrap{flex:1;position:relative;min-height:0}
+.map-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+.grid-l{stroke:rgba(255,255,255,.05);stroke-width:1}
+.fence{fill:none;stroke:rgba(255,255,255,.14);stroke-width:1;stroke-dasharray:3 4}
+.bldg{fill:rgba(255,255,255,.04);stroke:rgba(255,255,255,.12);stroke-width:1}
+.route{fill:none;stroke:rgba(199,144,99,.5);stroke-width:1.2;stroke-dasharray:2 4}
+.wp{fill:none;stroke:var(--faint);stroke-width:1}
+.wtxt{fill:var(--faint);font:9px var(--mono)}
+.rz{fill:rgba(229,101,75,.10);stroke:rgba(229,101,75,.4);stroke-width:1;stroke-dasharray:2 3}
+.rz.hot{fill:rgba(229,101,75,.32);stroke:var(--red)}
+.rztxt{fill:rgba(229,101,75,.7);font:8px var(--mono);letter-spacing:.1em}
+#subj{opacity:0;transition:opacity .3s}
+.map-cap{position:absolute;left:12px;bottom:9px;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+
+/* ---- ledger ---- */
+.led{flex:1;overflow-y:auto;min-height:0;font-family:var(--mono);font-size:11px;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.led::-webkit-scrollbar{width:8px}.led::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px}
+.lg-head,.lg-row{display:grid;grid-template-columns:58px 1fr 92px 74px;gap:8px;padding:5px 13px;align-items:center}
+.lg-head{position:sticky;top:0;background:var(--panel);color:var(--faint);border-bottom:1px solid var(--line);letter-spacing:.05em;z-index:1}
+.lg-row{border-bottom:1px solid rgba(255,255,255,.04)}
+.lg-row .lk{color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-row .lh{color:var(--brown)}
+.lg-row .lb{color:var(--mut)}
+.lg-row .lss{color:var(--ok);text-align:right}
+.lg-row.crit{background:rgba(229,101,75,.07)}
+.lg-row.crit .lk{color:var(--red)}.lg-row.crit .lss{color:var(--red)}
+.lg-empty{padding:22px 13px;color:var(--faint);font-family:var(--mono);font-size:11px}
+.hint{color:var(--amber)}
+
+@media(max-width:1000px){.main{grid-template-columns:1fr;overflow-y:auto}.term-card{min-height:52vh}}
+@media(prefers-reduced-motion:reduce){.pill.alert,.pill.boot .dot{animation:none}}
+</style>
+
+<div class="app">
+  <!-- top bar -->
+  <div class="top">
+    <span class="brand">
+      <svg viewBox="0 0 32 32" width="17" height="17"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="4.2" stroke-dasharray="57 12" transform="rotate(-64 16 16)"/><circle cx="16" cy="16" r="3.6" fill="currentColor"/></svg>
+      keeper ops console
+    </span>
+    <span class="pill idle" id="status"><span class="dot"></span><span id="statusTxt">standby</span></span>
+    <span class="sp"></span>
+    <span class="meta">
+      <span>unit <b>k-1 · 042</b></span>
+      <span>fw <b>v2.4.1</b></span>
+      <span>chain <b>31337</b></span>
+      <span>block <b id="tBlock">8,412,930</b></span>
+      <span><b id="tClock">02:47:00</b></span>
+    </span>
+  </div>
+
+  <div class="main">
+    <!-- terminal -->
+    <div class="card term-card">
+      <div class="hd">◉ terminal — keeper@k1-042 <span class="r" id="tSess">session live</span></div>
+      <div class="term" id="term"></div>
+      <div class="cli"><span class="p">keeper@k1-042</span><span class="p2">:~$</span>
+        <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type 'start' and press enter…">
+      </div>
+    </div>
+
+    <!-- right column -->
+    <div class="col">
+      <!-- telemetry -->
+      <div class="card" style="flex:0 0 auto">
+        <div class="hd">telemetry<span class="r" id="tUp">uptime 00:00:00</span></div>
+        <div class="tel">
+          <div><div class="k">battery</div><div class="v" id="mBatt">92.4<small>%</small></div><div class="bar"><i id="battBar" style="width:92%"></i></div></div>
+          <div><div class="k">speed</div><div class="v" id="mSpeed">0.0<small> m/s</small></div><div class="bar"><i style="width:0;background:var(--brown)" id="spdBar"></i></div></div>
+          <div><div class="k">heading</div><div class="v" id="mHead">092<small>°</small></div></div>
+          <div><div class="k">motor temp</div><div class="v" id="mTemp">41.2<small>°c</small></div></div>
+          <div><div class="k">gps</div><div class="v" id="mSats">7<small> sats</small></div></div>
+          <div><div class="k">link</div><div class="v" id="mRssi">-63<small> dBm</small></div></div>
+          <div class="wide sensors"><div class="k">sensor bus</div>
+            lidar <b id="sLidar">12.4k</b> pts/s · cpu <b id="sCpu">31</b>% · audio <b id="sAud">42</b> dB · coverage <b id="sCov">0</b>% · peers <b id="sPeers">6</b> · storage <b id="sStore">78</b>%</div>
+          <div class="wide"><div class="k">position (confidential)</div><div class="v mono" id="mPos" style="font-size:15px">██.████ · ██.████</div></div>
+        </div>
+      </div>
+
+      <!-- map -->
+      <div class="card map-card">
+        <div class="hd">site map — eastgate logistics<span class="r" id="tLoop">loop 413 · wp 1/11</span></div>
+        <div class="map-wrap">
+          <svg viewBox="0 0 460 300" preserveAspectRatio="xMidYMid meet">
+            <!-- zone guides -->
+            <g class="grid-l"><line x1="24" y1="150" x2="436" y2="150"/><line x1="230" y1="24" x2="230" y2="276"/></g>
+            <text class="zlabel" x="60" y="46">zone a</text>
+            <text class="zlabel" x="400" y="46" text-anchor="end">zone b</text>
+            <text class="zlabel" x="400" y="268" text-anchor="end">zone c</text>
+            <text class="zlabel" x="60" y="268">zone d</text>
+            <!-- perimeter fence -->
+            <rect class="fence" x="24" y="24" width="412" height="252" rx="4"/>
+            <!-- paved patrol road (under the route) -->
+            <path class="road" d="M150,258 L45,258 L45,58 L150,58 L330,58 L428,58 L428,200 L345,200 L345,258 L235,238 L150,205 Z"/>
+            <!-- main warehouse -->
+            <rect class="bldg" x="150" y="72" width="185" height="96" rx="2"/>
+            <text class="blabel" x="242" y="116" text-anchor="middle">warehouse a</text>
+            <!-- loading docks (south face) -->
+            <g class="dock"><rect x="168" y="168" width="18" height="9"/><rect x="196" y="168" width="18" height="9"/><rect x="224" y="168" width="18" height="9"/><rect x="252" y="168" width="18" height="9"/><rect x="280" y="168" width="18" height="9"/></g>
+            <text class="blabel" x="233" y="191" text-anchor="middle">loading docks</text>
+            <!-- office / annex -->
+            <rect class="bldg" x="52" y="72" width="72" height="54" rx="2"/>
+            <text class="blabel" x="88" y="103" text-anchor="middle">office</text>
+            <!-- parking -->
+            <g class="stall"><line x1="160" y1="218" x2="160" y2="262"/><line x1="182" y1="218" x2="182" y2="262"/><line x1="204" y1="218" x2="204" y2="262"/><line x1="226" y1="218" x2="226" y2="262"/><line x1="248" y1="218" x2="248" y2="262"/><line x1="270" y1="218" x2="270" y2="262"/><line x1="292" y1="218" x2="292" y2="262"/><line x1="150" y1="240" x2="302" y2="240"/></g>
+            <text class="blabel" x="226" y="212" text-anchor="middle">parking</text>
+            <!-- restricted compound -->
+            <rect id="rz" class="rz" x="348" y="62" width="70" height="70" rx="2"/>
+            <text x="383" y="93" text-anchor="middle" class="rztxt">RESTRICTED</text>
+            <text x="383" y="105" text-anchor="middle" class="rztxt2">substation</text>
+            <!-- patrol route -->
+            <path class="route" d="M150,258 L45,258 L45,58 L150,58 L330,58 L428,58 L428,200 L345,200 L345,258 L235,238 L150,205 Z"/>
+            <g id="wps"></g>
+            <!-- gate (gap in south fence) -->
+            <rect x="138" y="272" width="30" height="7" fill="var(--panel)"/>
+            <line x1="138" y1="269" x2="138" y2="276" stroke="var(--mut)" stroke-width="1.4"/>
+            <line x1="168" y1="269" x2="168" y2="276" stroke="var(--mut)" stroke-width="1.4"/>
+            <text class="blabel" x="205" y="290" text-anchor="middle">main gate</text>
+            <!-- subject -->
+            <g id="subj"><circle r="9" fill="none" stroke="var(--red)" stroke-width="1" opacity=".4"/><circle r="3" fill="var(--red)"/><text y="-11" text-anchor="middle" fill="var(--red)" style="font:8px var(--mono)">subject</text></g>
+            <!-- robot -->
+            <g id="rbt" transform="translate(150,258)">
+              <circle r="4" fill="none" stroke="var(--amber)" stroke-width="1" opacity="0.5">
+                <animate attributeName="r" values="4;12" dur="2.2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.55;0" dur="2.2s" repeatCount="indefinite"/>
+              </circle>
+              <circle r="3.6" fill="var(--amber)"/><circle r="1.4" fill="#0b0b0a"/>
+            </g>
+          </svg>
+          <div class="map-cap">every marker + move is anchored on-chain</div>
+        </div>
+      </div>
+
+      <!-- ledger -->
+      <div class="card" style="flex:1 1 0;min-height:120px">
+        <div class="hd">on-chain ledger<span class="r"><span id="tInc">0</span> critical · <span id="tAnc">0</span> anchored</span></div>
+        <div class="lg-head mono">time<span>event</span><span>tx / leaf</span><span style="text-align:right">status</span></div>
+        <div class="led" id="feed"><div class="lg-empty">no events yet — run <span class="hint">start</span> in the terminal.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.zlabel{fill:rgba(255,255,255,.16);font:8px var(--mono);letter-spacing:.14em}
+.blabel{fill:rgba(255,255,255,.32);font:8.5px var(--mono);letter-spacing:.03em}
+.road{fill:none;stroke:rgba(255,255,255,.05);stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
+.dock rect{fill:rgba(255,255,255,.05);stroke:rgba(255,255,255,.13);stroke-width:1}
+.stall line{stroke:rgba(255,255,255,.08);stroke-width:1}
+.rztxt2{fill:rgba(229,101,75,.5);font:7px var(--mono);letter-spacing:.05em}
+.sensors{font-family:var(--mono);font-size:11px;color:var(--mut);line-height:1.7}
+.sensors b{color:var(--txt);font-weight:500}
+.ln.banner{white-space:pre;color:var(--amber);line-height:1.12;padding:0}
+</style>
+
+<script>
+(function(){
+  var term=document.getElementById('term'), input=document.getElementById('cmd'), feed=document.getElementById('feed');
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // state
+  var booted=false, running=false, cool=0;
+  var block=8412930, nonce=1841, loop=413, wpi=0;
+  var batt=92.4, speed=0, heading=92, temp=41.2, sats=7, rssi=63, up=0, inc=0, anc=0;
+  var cpu=31, lidar=12400, audio=42, cov=0, peers=6, store=78; // extra telemetry
+  var SEC=2*3600+47*60, MS=0;
+
+  var WP=[
+    {x:150,y:258,l:'main gate'},{x:45,y:258,l:'sw drive'},{x:45,y:58,l:'nw fence'},
+    {x:150,y:58,l:'north drive'},{x:330,y:58,l:'restricted watch'},{x:428,y:58,l:'ne corner'},
+    {x:428,y:200,l:'east fence'},{x:345,y:200,l:'se yard'},{x:345,y:258,l:'parking'},
+    {x:235,y:238,l:'dock apron'},{x:150,y:205,l:'sw warehouse'}
+  ];
+  var rbt=document.getElementById('rbt'), subj=document.getElementById('subj'), rz=document.getElementById('rz');
+  (function(){var g=document.getElementById('wps'),s='';WP.forEach(function(p,i){s+='<circle class="wp" cx="'+p.x+'" cy="'+p.y+'" r="2.6"/><text class="wtxt" x="'+p.x+'" y="'+(p.y-6)+'" text-anchor="middle">'+(i+1)+'</text>';});g.innerHTML=s;})();
+
+  var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};
+  function two(n){return (n<10?'0':'')+Math.floor(n);}
+  function comma(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+  function hx(n){var s='';for(var i=0;i<n;i++)s+='0123456789abcdef'[(Math.random()*16)|0];return s;}
+  function ri(n){return (Math.random()*n)|0;}
+  function esc(s){return s.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  function clockStr(){var s=SEC%86400;return two(s/3600)+':'+two((s/60)%60)+':'+two(s%60);}
+  function stamp(){MS+=30+ri(340);if(MS>=1000){SEC+=(MS/1000)|0;MS%=1000;}return clockStr()+'.'+('00'+MS).slice(-3);}
+
+  function line(html,cls,noTime){
+    var d=document.createElement('div');d.className='ln '+(cls||'');
+    d.innerHTML=(noTime?'':'<span class="lt">'+stamp()+'</span>  ')+html;
+    term.appendChild(d);
+    while(term.children.length>600)term.removeChild(term.firstChild);
+    term.scrollTop=term.scrollHeight;return d;
+  }
+  function ledger(kind,tx,critical){
+    if(feed.querySelector('.lg-empty'))feed.innerHTML='';
+    var r=document.createElement('div');r.className='lg-row'+(critical?' crit':'');
+    r.innerHTML='<span class="lt">'+clockStr()+'</span><span class="lk">'+kind+'</span><span class="lh">'+tx+'</span><span class="lss">'+(critical?'critical':'anchored ✓')+'</span>';
+    feed.insertBefore(r,feed.firstChild);
+    while(feed.children.length>40)feed.removeChild(feed.lastChild);
+  }
+  function anchorTx(kind,critical){
+    block+=1+ri(3);nonce++;
+    if(critical){inc++;var h='0x'+hx(6)+'…'+hx(4);line('[tx!]  '+kind+' · <b>CRITICAL</b> · on-chain '+h+' · block '+comma(block),'l-crit');ledger(kind,h,true);}
+    else{anc++;var lf='0x'+hx(6)+'…';line('[tx]   '+kind+' · merkle-batched · leaf '+lf+' · n='+nonce,'l-tx');ledger(kind,lf,false);}
+    document.getElementById('tBlock').textContent=comma(block);
+    document.getElementById('tInc').textContent=inc;
+    document.getElementById('tAnc').textContent=anc;
+  }
+  function setStatus(kind){
+    var m={idle:['idle','standby'],boot:['boot','booting'],patrol:['patrol','patrolling'],alert:['alert','anomaly']};
+    var p=document.getElementById('status'),x=m[kind];
+    p.className='pill '+x[0];document.getElementById('statusTxt').textContent=x[1];
+  }
+  function tel(){
+    document.getElementById('mBatt').innerHTML=batt.toFixed(1)+'<small>%</small>';
+    var bb=document.getElementById('battBar');bb.style.width=batt+'%';bb.className=batt<15?'crit':batt<30?'low':'';
+    document.getElementById('mSpeed').innerHTML=speed.toFixed(1)+'<small> m/s</small>';
+    document.getElementById('spdBar').style.width=(speed/1.6*100)+'%';
+    document.getElementById('mHead').innerHTML=two(heading)+'<small>°</small>';
+    document.getElementById('mTemp').innerHTML=temp.toFixed(1)+'<small>°c</small>';
+    document.getElementById('mSats').innerHTML=sats+'<small> sats</small>';
+    document.getElementById('mRssi').innerHTML='-'+rssi+'<small> dBm</small>';
+    document.getElementById('tUp').textContent='uptime '+two(up/3600)+':'+two((up/60)%60)+':'+two(up%60);
+    document.getElementById('tLoop').textContent='loop '+loop+' · wp '+(wpi+1)+'/'+WP.length;
+    document.getElementById('sLidar').textContent=(lidar/1000).toFixed(1)+'k';
+    document.getElementById('sCpu').textContent=cpu;
+    document.getElementById('sAud').textContent=audio;
+    document.getElementById('sCov').textContent=cov;
+    document.getElementById('sPeers').textContent=peers;
+    document.getElementById('sStore').textContent=store;
+  }
+  // moving marker between waypoints — constant speed (duration proportional to distance)
+  var PXPS=13, MPP=0.07; // map px/s (slow) + meters-per-pixel so the m/s readout stays coherent with the visual pace
+  function moveTo(i){
+    var a=WP[wpi],b=WP[i];
+    heading=(Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI+90+360)%360;
+    var dist=Math.hypot(b.x-a.x,b.y-a.y), dur=Math.max(1500,dist/PXPS*1000);
+    return new Promise(function(res){
+      if(reduce){rbt.setAttribute('transform','translate('+b.x+','+b.y+')');wpi=i;return res();}
+      var t0=performance.now();
+      (function f(now){
+        var k=Math.min(1,(now-t0)/dur); // linear = steady patrol pace
+        rbt.setAttribute('transform','translate('+(a.x+(b.x-a.x)*k).toFixed(1)+','+(a.y+(b.y-a.y)*k).toFixed(1)+')');
+        if(k<1&&running){requestAnimationFrame(f);}else{rbt.setAttribute('transform','translate('+b.x+','+b.y+')');wpi=i;res();}
+      })(t0);
+    });
+  }
+  function showSubject(){subj.setAttribute('transform','translate(322,96)');subj.style.opacity=1;}
+  function moveSubjectToRZ(){subj.setAttribute('transform','translate(383,98)');rz.classList.add('hot');}
+  function hideSubject(){subj.style.opacity=0;rz.classList.remove('hot');}
+  function zone(){return ['a','b','c','d'][ri(4)];}
+
+  // ---- boot sequence ----
+  async function boot(){
+    setStatus('boot');
+    if(booted){line('re-arming subsystems … <b>ok</b>','l-ok');await sleep(400);return;}
+    var seq=[
+      ['booting keeper k-1 · unit 042','l-sys',260],
+      ['[boot] firmware v2.4.1 (build 7f3a1c) — cold start','l-boot',300],
+      ['[boot] power-on self test …','l-boot',360],
+      ['[hw]     · lidar array (360°) …………… ok','l-hw',150],
+      ['[hw]     · rgb + thermal camera ……… ok','l-hw',150],
+      ['[hw]     · imu / gyro / odometry …… ok','l-hw',150],
+      ['[hw]     · drive motors ………… calibrated','l-hw',180],
+      ['[hw]     · battery 92.4% · cells nominal','l-hw',200],
+      ['[sec]  loading secure element …','l-sec',320],
+      ['[sec]  device key 0x'+hx(8)+'… attested','l-sec',260],
+      ['[net]  connecting to keeper network …','l-net',380],
+      ['[net]  rpc 127.0.0.1:8545 · chain 31337 · head '+comma(block),'l-net',220],
+      ['[net]  registry handshake … unit 042 <b>recognized</b>','l-net',260],
+      ['[net]  operator 0x'+hx(8)+'… · stake verified','l-net',200],
+      ['[net]  nonce sync … n='+nonce,'l-net',200],
+      ['[gps]  acquiring lock … 4 sats … 7 sats … <b>fix</b>','l-gps',420],
+      ['[gps]  position ██.████ · ██.████ (confidential)','l-gps',220],
+      ['[map]  site: eastgate logistics · route '+WP.length+' waypoints · loop '+loop,'l-map',240],
+      ['[ok]   boot complete in 4.1s','l-ok',220],
+      ['[ok]   entering autonomous patrol mode','l-ok',260]
+    ];
+    for(var i=0;i<seq.length;i++){line(seq[i][0],seq[i][1]);await sleep(reduce?60:seq[i][2]);}
+    booted=true;
+  }
+
+  // ---- random event system ----
+  function sl(){return reduce?110:(650+ri(750));}           // slow beat between narrated lines
+  function rd(n){return Array(n+1).join('█');}
+  function plate(){return rd(2)+'-'+rd(3);}
+  function pick(pool){var t=0,i;for(i=0;i<pool.length;i++)t+=pool[i].w;var r=Math.random()*t;for(i=0;i<pool.length;i++){r-=pool[i].w;if(r<=0)return pool[i];}return pool[pool.length-1];}
+
+  // ambient / routine observations — mostly informational, some anchor a routine tx
+  var AMB=[
+    {w:6,fn:async function(){line('[beat] heartbeat · batt '+batt.toFixed(1)+'% · '+sats+' sats · rssi -'+rssi+' dBm','l-beat');if(Math.random()<0.5)anchorTx('heartbeat',false);}},
+    {w:5,fn:async function(){line('[env]  perimeter scan · zone '+zone()+' · nominal','l-env');}},
+    {w:3,fn:async function(){line('[env]  thermal sweep · zone '+zone()+' · peak '+(24+ri(9))+'.'+ri(9)+'°c · nominal','l-env');}},
+    {w:3,fn:async function(){line('[sen]  lidar sweep · '+comma(9000+ri(7000))+' pts · '+ri(2)+' transient obstacles','l-beat');}},
+    {w:3,fn:async function(){line('[chk]  door D-'+two(1+ri(18))+' · access panel · LOCKED ✓','l-move');anchorTx('access_check',false);}},
+    {w:2,fn:async function(){line('[chk]  badge scan · staff '+rd(2)+'-'+rd(4)+' · authorized','l-move');anchorTx('badge_scan',false);}},
+    {w:2,fn:async function(){line('[obj]  vehicle logged · parking · plate '+plate()+' (redacted) · authorized','l-move');anchorTx('vehicle_logged',false);}},
+    {w:2,fn:async function(){line('[sys]  self-diagnostic · motors ok · sensors ok · storage '+store+'%','l-hw');}},
+    {w:2,fn:async function(){line('[gps]  drift correction · hdop 0.'+(5+ri(4))+' · fix stable','l-gps');}},
+    {w:2,fn:async function(){line('[net]  comms handoff · tower kpr-'+two(ri(40))+' · '+peers+' peers · rssi -'+rssi,'l-net');}},
+    {w:2,fn:async function(){line('[chk]  lighting · zone '+zone()+' · fixtures nominal','l-env');}},
+    {w:2,fn:async function(){line('[nav]  obstacle · pallet · rerouting … clear','l-track');}},
+    {w:1,fn:async function(){line('[env]  motion · zone '+zone()+' · classified: animal ('+['cat','fox','bird','dog'][ri(4)]+') · dismissed','l-track');}},
+    {w:1,fn:async function(){line('[aud]  transient '+(46+ri(34))+' dB · zone '+zone()+' · classified: '+['vehicle','wind','hvac','door'][ri(4)]+' · nominal','l-track');}},
+    {w:1,fn:async function(){line('[chk]  fire panel · zone '+zone()+' · supervisory ok · 0 faults','l-env');}},
+    {w:1,fn:async function(){line('[warn] fixture fault · zone '+zone()+' · light L-'+two(1+ri(30))+' out · work order raised','l-warn');anchorTx('maintenance_flag',false);}}
+  ];
+
+  // major incidents — critical tx, gated by cooldown; a different mix surfaces each run
+  async function incPerson(){
+    setStatus('alert');document.getElementById('tSess').textContent='⚠ anomaly';var z=zone();
+    line('[env]  motion detected · zone '+z+' · classifying …','l-env');await sleep(sl());
+    line('[warn] anomaly: <b>person detected</b> · zone '+z+' · conf 0.'+(90+ri(9)),'l-warn');await sleep(sl());
+    showSubject();anchorTx('incident_detected · person',true);await sleep(sl());
+    line('[trk]  subject bearing '+two(ri(360))+'° · range '+(3+ri(18))+'m · tracking','l-track');await sleep(sl());
+    if(Math.random()<0.7){
+      line('[ALERT] subject <b>MOVING INTO RESTRICTED ZONE</b> · perimeter-3','l-alert');moveSubjectToRZ();await sleep(sl());
+      anchorTx('geofence_breach · perimeter-3',true);await sleep(sl());
+      line('[ops]  operator notified · dispatch ack pending …','l-ops');await sleep(sl());
+      line('[trk]  subject exiting perimeter · range 26m','l-track');await sleep(sl());
+    }
+    hideSubject();line('[ok]   zone clear · threat resolved · resuming patrol','l-ok');
+    setStatus('patrol');document.getElementById('tSess').textContent='session live';
+  }
+  async function incObject(){
+    setStatus('alert');var z=zone();
+    line('[warn] unattended object · zone '+z+' · bag · dwell '+(3+ri(7))+'m','l-warn');await sleep(sl());
+    anchorTx('object_flagged',true);await sleep(sl());
+    line('[ops]  operator reviewing feed · dispatch en route','l-ops');await sleep(sl());
+    line('[ok]   object claimed by staff · cleared','l-ok');setStatus('patrol');
+  }
+  async function incLoiter(){
+    setStatus('alert');var z=zone();
+    line('[warn] loitering detected · subject · zone '+z+' · '+(5+ri(9))+'m dwell','l-warn');await sleep(sl());
+    showSubject();anchorTx('incident_detected · loitering',true);await sleep(sl());
+    line('[ops]  audio warning issued · "this is a patrolled area"','l-ops');await sleep(sl());
+    line('[trk]  subject leaving zone '+z,'l-track');hideSubject();await sleep(sl());
+    line('[ok]   zone clear · resuming patrol','l-ok');setStatus('patrol');
+  }
+  async function incTamper(){
+    setStatus('alert');var z=zone();
+    line('[ALERT] perimeter tamper · fence F-'+two(1+ri(20))+' · zone '+z,'l-alert');await sleep(sl());
+    anchorTx('perimeter_breach · fence',true);await sleep(sl());
+    line('[trk]  no subject on thermal · likely wildlife','l-track');await sleep(sl());
+    line('[ok]   perimeter re-secured · resuming','l-ok');setStatus('patrol');
+  }
+  async function incThermal(){
+    setStatus('alert');var z=zone();
+    line('[ALERT] thermal anomaly · zone '+z+' · '+(58+ri(22))+'°c rising','l-alert');await sleep(sl());
+    anchorTx('thermal_alarm',true);await sleep(sl());
+    line('[ops]  facilities + fire watch notified','l-ops');await sleep(sl());
+    line('[ok]   source: hvac exhaust · false alarm cleared','l-ok');setStatus('patrol');
+  }
+  async function incTailgate(){
+    setStatus('alert');
+    line('[warn] tailgating · main gate · 2 subjects · 1 badge','l-warn');await sleep(sl());
+    anchorTx('incident_detected · tailgating',true);await sleep(sl());
+    line('[ops]  second subject challenged · badge verified','l-ops');await sleep(sl());
+    line('[ok]   contractor · escorted in · cleared','l-ok');setStatus('patrol');
+  }
+  var INC=[{w:3,fn:incPerson},{w:2,fn:incObject},{w:2,fn:incLoiter},{w:1,fn:incTamper},{w:1,fn:incThermal},{w:1,fn:incTailgate}];
+
+  async function charge(){
+    setStatus('boot');
+    line('[pwr]  battery '+batt.toFixed(1)+'% low · scheduling dock return','l-warn');await sleep(sl());
+    line('[nav]  returning to charge dock · aligning …','l-move');await sleep(sl());
+    while(batt<95&&running){batt=Math.min(97,batt+13+ri(6));line('[pwr]  fast-charging … '+batt.toFixed(0)+'%','l-ok');await sleep(reduce?110:900);}
+    line('[pwr]  charge complete · undocking · resuming patrol','l-ok');setStatus('patrol');
+  }
+  async function loopSummary(){
+    line('[log]  patrol loop '+(loop-1)+' complete · coverage 100% · '+inc+' incidents · 0 unresolved','l-ok');
+    anchorTx('patrol_summary · loop '+(loop-1),false);
+  }
+
+  // ---- one patrol step (slow, deliberate) ----
+  async function step(skipInc){
+    if(batt<26){await charge();if(!running)return;}
+    var nx=(wpi+1)%WP.length;if(nx===0)loop++;
+    speed=+(PXPS*MPP + (Math.random()*0.08-0.04)).toFixed(2); // ~0.9 m/s, consistent with the constant map speed
+    line('[move] → wp-'+two(nx+1)+' ('+WP[nx].l+') · heading '+two(heading)+'° · '+speed.toFixed(2)+' m/s','l-move');
+    await moveTo(nx);
+    if(!running)return;
+    speed=0;cov=Math.round((nx===0?WP.length:nx)/WP.length*100);batt=Math.max(6,batt-0.15-Math.random()*0.2);
+    anchorTx('waypoint_reached · wp-'+two(nx+1)+' '+WP[nx].l.replace(/ /g,'_'),false);
+    if(nx===0){await sleep(sl());await loopSummary();}
+    await sleep(reduce?120:(800+ri(800)));               // dwell / scan at the waypoint
+    if(!skipInc && cool<=0 && Math.random()<0.30){await pick(INC).fn();cool=3+ri(3);}
+    else{var n=1+(Math.random()<0.6?1:0);for(var q=0;q<n;q++){if(!running)return;await pick(AMB).fn();await sleep(reduce?100:(550+ri(850)));}}
+    if(cool>0)cool--;
+    await sleep(reduce?150:(1200+ri(1800)));             // pause before the next leg
+  }
+
+  function banner(){
+    var art=[
+      '',
+      '         ___',
+      '       ,´   `.',
+      '      |   ●   |',
+      '       `.___,´',
+      '',
+      '   ██╗  ██╗███████╗███████╗██████╗ ███████╗██████╗ ',
+      '   ██║ ██╔╝██╔════╝██╔════╝██╔══██╗██╔════╝██╔══██╗',
+      '   █████╔╝ █████╗  █████╗  ██████╔╝█████╗  ██████╔╝',
+      '   ██╔═██╗ ██╔══╝  ██╔══╝  ██╔═══╝ ██╔══╝  ██╔══██╗',
+      '   ██║  ██╗███████╗███████╗██║     ███████╗██║  ██║',
+      '   ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝'
+    ];
+    art.forEach(function(l){line(l,'banner',true);});
+    line('',null,true);
+    line('   the keeper network · k-1 autonomous security unit','l-sys',true);
+    line('   ops console v0.4 · initializing …','l-sys',true);
+    line('',null,true);
+  }
+  async function start(){
+    banner();
+    await sleep(reduce?150:650);
+    await boot();
+    running=true;setStatus('patrol');
+    anchorTx('patrol_start',false);
+    // scripted opening: one patrol leg (~8s), then a guaranteed incident ~10s after moving off
+    var nx=(wpi+1)%WP.length;
+    speed=+(PXPS*MPP+(Math.random()*0.08-0.04)).toFixed(2);
+    line('[move] → wp-'+two(nx+1)+' ('+WP[nx].l+') · heading '+two(heading)+'° · '+speed.toFixed(2)+' m/s','l-move');
+    await moveTo(nx);
+    if(!running)return;
+    speed=0;cov=Math.round(nx/WP.length*100);
+    anchorTx('waypoint_reached · wp-'+two(nx+1)+' '+WP[nx].l.replace(/ /g,'_'),false);
+    await pick(AMB).fn();
+    await sleep(reduce?200:1600);
+    if(running){await incPerson();cool=4;}
+    while(running){await step();}
+  }
+
+  // ---- command handling ----
+  function echo(v){line('<span class="pr">keeper@k1-042</span><span class="pc">:~$</span> '+esc(v),'l-cmd',true);}
+  function handle(v){
+    var c=v.toLowerCase().trim();if(!c)return;
+    if(c==='start'){if(running){line('patrol already running.','l-sys');return;}start();}
+    else if(c==='stop'){if(!running){line('nothing to stop.','l-sys');return;}running=false;speed=0;setStatus('idle');line('patrol halted by operator. type start to resume.','l-sys');}
+    else if(c==='status'){line('unit 042 · '+(running?'patrolling':'idle')+' · batt '+batt.toFixed(1)+'% · loop '+loop+' · wp '+(wpi+1)+'/'+WP.length+' · coverage '+cov+'% · block '+comma(block)+' · '+inc+' critical / '+anc+' anchored','l-sys');}
+    else if(c==='clear'){term.innerHTML='';}
+    else if(c==='help'){line('commands:  <b>start</b>  ·  stop  ·  status  ·  clear  ·  help','l-sys');}
+    else line("command not found: "+esc(v)+" — type 'help'.",'l-sys');
+  }
+  var hist=[],hp=0;
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){var v=input.value;echo(v);if(v.trim())hist.push(v);hp=hist.length;input.value='';handle(v);}
+    else if(e.key==='ArrowUp'){if(hp>0){hp--;input.value=hist[hp]||'';}e.preventDefault();}
+    else if(e.key==='ArrowDown'){if(hp<hist.length){hp++;input.value=hist[hp]||'';}e.preventDefault();}
+  });
+  document.querySelector('.term-card').addEventListener('click',function(){input.focus();});
+
+  // ---- ambient tickers ----
+  setInterval(function(){
+    if(running){
+      batt=Math.max(6,batt-0.02-Math.random()*0.03);up++;
+      temp=40.5+Math.sin(up/9)*1.6+Math.random()*.6;
+      sats=6+ri(3);rssi=58+ri(12);
+      cpu=26+ri(26);lidar=9000+ri(8000);audio=38+ri(24);peers=5+ri(4);
+      store=Math.max(58,Math.min(96,store+(Math.random()<0.5?-1:0)));
+    }
+    else if(!booted){SEC++;}
+    document.getElementById('tClock').textContent=clockStr();
+    tel();
+  },1000);
+
+  // intro
+  line('keeper k-1 ops console · unit 042','l-sys');
+  line("standing by. type <span class='hint'>start</span> and press enter to bring the unit online.",'l-sys');
+  tel();input.focus();
+})();
+</script>
